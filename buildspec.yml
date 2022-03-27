@@ -3,6 +3,7 @@ phases:
   install:
     commands:
       - cd ./index-photos
+      - ls
       - pip install -r requirements.txt
       - cd ../  
       - aws cloudformation package --template-file samTemplate.yaml --s3-bucket lambdapipeline-demo --output-template-file outputsamtemplate.yml
