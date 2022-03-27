@@ -12,7 +12,7 @@ def lambda_handler(event, context):
     
     host = 'https://search-photos-7iq5s6l2rv5b5ctfb5byg2g5oa.us-east-1.es.amazonaws.com/' # For example, my-test-domain.us-east-1.es.amazonaws.com
     region = 'us-east-1' # e.g. us-west-1
-    
+    #comment to check if CI/CD pipeline works end-to-end    
     service = 'es'
     credentials = boto3.Session().get_credentials()
     path = 'test/_search'
