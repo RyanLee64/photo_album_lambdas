@@ -1,0 +1,13 @@
+version: 0.1
+phases:
+  install:
+    commands:
+      - cd ./index-photos
+      - pip install -r requirements.txt
+      - cd ../  
+      - aws cloudformation package --template-file samTemplate.yaml --s3-bucket lambdapipeline-demo --output-template-file outputsamtemplate.yml
+artifacts:
+  type: zip
+  files:
+    - samTemplate.yaml
+    - outputsamtemplate.yml
