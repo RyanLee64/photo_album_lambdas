@@ -6,7 +6,7 @@ phases:
       - ls
       - pip install -r requirements.txt -t lib
       - cd ../  
-      - aws cloudformation package --template-file samTemplate.yaml --s3-bucket lambdapipeline-demo --output-template-file outputsamtemplate.yml
+      - aws cloudformation package --template-file samTemplate.yaml --s3-bucket photo-album-lambdas-hw2 --output-template-file outputsamtemplate.yml
 artifacts:
   type: zip
   files:
