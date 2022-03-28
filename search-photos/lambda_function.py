@@ -32,21 +32,22 @@ def lambda_handler(event, context):
     #use lex to disambiguate the query if it cannot simply search on the entire
     #query which is naturally less precise
     p = inflect.engine()
-    slots_from_lex = response['slots']
-    keyone = slots_from_lex['keyone']
-    keytwo = slots_from_lex['keytwo']
- 
-    
-    if(keyone is not None):
-        if(p.singular_noun(keyone) is not False):
-            keyone = p.singular_noun(keyone)
-        query = keyone
-    if(keytwo is not None):
-        if(p.singular_noun(keyone) is not False):
-            keyone = p.singular_noun(keyone)
-        if(p.singular_noun(keytwo) is not False):
-            keyone = p.singular_noun(keytwo)
-        query = keyone + keytwo
+    if('slots' in response):
+        slots_from_lex = response['slots']
+        keyone = slots_from_lex['keyone']
+        keytwo = slots_from_lex['keytwo']
+     
+        
+        if(keyone is not None):
+            if(p.singular_noun(keyone) is not False):
+                keyone = p.singular_noun(keyone)
+            query = keyone
+        if(keytwo is not None):
+            if(p.singular_noun(keyone) is not False):
+                keyone = p.singular_noun(keyone)
+            if(p.singular_noun(keytwo) is not False):
+                keyone = p.singular_noun(keytwo)
+            query = keyone + keytwo
     print("THE QUERY IS:" + query)
     payload = {
     "query": {
@@ -98,4 +99,5 @@ def lambda_handler(event, context):
     }
 
     
+
 
