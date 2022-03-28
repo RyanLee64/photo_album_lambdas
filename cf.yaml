@@ -1,0 +1,102 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Cloud Formation Stack for HW2
+
+
+Resources:
+  PhotoAPICF:
+    Type: AWS::ApiGateway::RestApi
+    Properties: 
+      ApiKeySourceType: HEADER
+      BodyS3Location: 
+          Bucket: hw2-cloud-formation-resources
+          Key: apigw.yaml
+      Description: Configured API for CloudFormation
+      Name: PhotoAPICF
+
+
+  FrontendBucketCF:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: frontend-photo-bucket-cf
+      PublicAccessBlockConfiguration: 
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+      WebsiteConfiguration: 
+          IndexDocument: album.html
+
+
+  FrontendBucketCFPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: frontend-photo-bucket-cf
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Sid: PublicReadGetObject
+          Effect: Allow
+          Principal: "*"
+          Action: 
+            - s3:GetObject
+          Resource: !Join
+            - ''
+            - - 'arn:aws:s3:::'
+              - frontend-photo-bucket-cf
+              - /*
+
+  SearchPhotoRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Description: "Search Photos Replica Role"
+      Policies: 
+      - PolicyName: SearchPhotosInlineCF
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: logs:CreateLogGroup
+            Resource: arn:aws:logs:us-east-1:215814922646:*
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - arn:aws:logs:us-east-1:215814922646:log-group:/aws/lambda/search-photos-replica:*
+          - Effect: Allow
+            Action:
+            - es:*
+            Resource: "*"
+          - Effect: Allow
+            Action: lex:PostText
+            Resource:
+            - arn:aws:lex:us-east-1:215814922646:bot:PhotoAlbum:photofinal
+            - arn:aws:lex:us-east-1:215814922646:bot:PhotoAlbum:$LATEST
+      RoleName: SearchPhotoRoleCF
+
+
+  SearchPhotosLambdaCF:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      FunctionName: search-photos-replica
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      CodeUri: s3://hw2-cloud-formation-resources/search-photos.zip
+      Description: "Search Photos Lambda Replica"
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt   SearchPhotoRole.Arn
+      Environment:
+        Variables:
+          REGION: us-east-1
