@@ -7,6 +7,9 @@ Resources:
   PhotoAPICF:
     Type: AWS::ApiGateway::RestApi
     Properties: 
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
       ApiKeySourceType: HEADER
       BodyS3Location: 
           Bucket: hw2-cloud-formation-resources
@@ -100,3 +103,163 @@ Resources:
       Environment:
         Variables:
           REGION: us-east-1
+
+  IndexPhotoRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Description: "Index Photos Replica Role"
+      Policies: 
+      - PolicyName: IndexPhotosInlineCF
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: logs:CreateLogGroup
+            Resource: arn:aws:logs:us-east-1:215814922646:*
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - arn:aws:logs:us-east-1:215814922646:log-group:/aws/lambda/index-photos-replica:*
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource: arn:aws:s3:::backend-photo-bucket-cf
+          - Effect: Allow
+            Action:
+            - rekognition:*
+            Resource: "*"
+          - Effect: Allow
+            Action:
+            - es:*
+            Resource: "*"
+      RoleName: IndexPhotoRoleCF
+
+  IndexPhotosLambdaCF:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      FunctionName: index-photos-replica
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      CodeUri: s3://hw2-cloud-formation-resources/index-photos.zip
+      Description: "Index Photos Lambda Replica"
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt   IndexPhotoRole.Arn
+      Environment:
+        Variables:
+          REGION: us-east-1
+
+  BackendBucketCF:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: backend-photo-bucket-cf
+      NotificationConfiguration:
+        LambdaConfigurations: 
+          - Event: s3:ObjectCreated:Put
+            Function: !GetAtt IndexPhotosLambdaCF.Arn
+      PublicAccessBlockConfiguration: 
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+      WebsiteConfiguration: 
+          IndexDocument: album.html
+
+  ProcessingLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref IndexPhotosLambdaCF
+      Principal: s3.amazonaws.com
+      SourceArn: arn:aws:s3:::backend-photo-bucket-cf
+      SourceAccount: !Ref AWS::AccountId
+
+  BackendBucketCFPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: backend-photo-bucket-cf
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Sid: PublicReadGetObject
+          Effect: Allow
+          Principal: "*"
+          Action: 
+            - s3:GetObject
+          Resource: !Join
+            - ''
+            - - 'arn:aws:s3:::'
+              - backend-photo-bucket-cf
+              - /*        
+
+  ApiGWPostPhotoRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "apigateway.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Description: "Apigw upload photo to s3 Replica Role"
+      Policies: 
+      - PolicyName: PostPhotosAPIGWToS3InlineCF
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: arn:aws:s3:::backend-photo-bucket-cf/*
+      RoleName: ApiGwToS3PublishPhotoCF
+
+  OptionsReturnLambdaCF:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      FunctionName: options-return-replica
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      InlineCode: |
+        import json
+        def lambda_handler(event, context):
+            return {
+                'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,Accept,x-amz-meta-customLabels',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,PUT,GET'
+                }
+            }  
+      Description: "Options Return Lambda Replica"
+      MemorySize: 128
+      Timeout: 30
+      Environment:
+        Variables:
+          REGION: us-east-1
+  ESInstance:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: photo-elasticsearch-cf
+      ElasticsearchVersion: 7.9
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: '10'
+      ElasticsearchClusterConfig:
+        InstanceType: t3.small.elasticsearch
+       
+   
