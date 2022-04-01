@@ -46,8 +46,8 @@ def lambda_handler(event, context):
             if(p.singular_noun(keyone) is not False):
                 keyone = p.singular_noun(keyone)
             if(p.singular_noun(keytwo) is not False):
-                keyone = p.singular_noun(keytwo)
-            query = keyone + keytwo
+                keytwo = p.singular_noun(keytwo)
+            query = keyone +" "+ keytwo
     print("THE QUERY IS:" + query)
     payload = {
     "query": {
@@ -99,5 +99,6 @@ def lambda_handler(event, context):
     }
 
     
+
 
 
