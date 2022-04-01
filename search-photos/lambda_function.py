@@ -65,6 +65,7 @@ def lambda_handler(event, context):
     
     print(hits)
     print(r.text)
+    #comment for demo 
     results = []
     for hit in hits:
         name = name = hit["_source"]["objectKey"]
